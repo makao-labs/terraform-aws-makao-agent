@@ -25,10 +25,7 @@ locals {
   region      = data.aws_region.current.name
   prefix      = "makao-agent-${local.client_slug}"
 
-  release_zip_url = (
-    "https://github.com/makao-labs/makao-agent-releases/releases/download/"
-    "v${var.module_version}/makao-agent-${var.module_version}.zip"
-  )
+  release_zip_url = "https://github.com/makao-labs/makao-agent-releases/releases/download/v${var.module_version}/makao-agent-${var.module_version}.zip"
 
   common_tags = {
     Project     = "makao-agent"
