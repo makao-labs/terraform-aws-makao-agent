@@ -1,141 +1,129 @@
-# Makao Agent v3
+# terraform-aws-makao-agent
 
-AWS cost and security advisor delivered as a Terraform module. Deploys a Lambda function into the client's account that scans for cost waste and security gaps, then sends an email digest via SES.
+Deploys an AWS Lambda agent that scans your account for cost waste and security gaps, then sends a weekly HTML digest via email.
 
-## How it works
+## What it finds
 
-1. **Nightly scan** — EventBridge triggers the Lambda at 2 AM UTC. The agent scans EC2, EBS, RDS, EKS, ECS, Lambda, NAT gateways, EIPs, S3, CloudWatch Logs, security groups, IAM, and GuardDuty.
-2. **Findings stored** — Each finding is deduplicated in DynamoDB by `resource_id`. Recurring findings increment a `scan_count`; resolved resources are marked closed.
-3. **Weekly digest** — A second EventBridge rule sends an HTML email via SES summarising open findings, estimated savings, and remediation steps.
-
-## Tiers
-
-| Feature | Community | Pro |
-|---|---|---|
-| Cost findings (EC2/EBS/RDS/…) | ✓ | ✓ |
-| Security group scan (22/3306/5432 open to 0.0.0.0/0) | ✓ | ✓ |
-| Weekly email digest | ✓ | ✓ |
-| IAM admin user detection | — | ✓ |
-| IAM inactive user detection (90 days) | — | ✓ |
-| Root account MFA check | — | ✓ |
-| GuardDuty per-region check | — | ✓ |
-| Compute Optimizer recommendations | — | ✓ |
-| 30-day remediation roadmap | — | ✓ |
-| Architecture risk flags | — | ✓ |
-| Monday morning briefing | — | ✓ |
-| Spend spike alerts | — | ✓ |
-
-Set `license_key` to activate Pro. Leave it empty for Community.
+The agent scans EC2, EBS, RDS, EKS, ECS, Lambda, NAT gateways, EIPs, S3, and CloudWatch Logs for idle, oversized, unencrypted, or untagged resources and estimates monthly savings. On the security side it checks security groups for dangerously open ports (SSH, MySQL, PostgreSQL exposed to 0.0.0.0/0). Pro tier adds IAM audit, root MFA, and GuardDuty coverage. All findings are deduplicated across scans — the same issue won't flood your inbox.
 
 ## Quick start
+
+### Option 1 — Terraform Registry
+
+> **Coming Soon — not yet live.**
 
 ```hcl
 module "makao_agent" {
   source  = "makao-labs/makao-agent/aws"
   version = "0.1.0"
 
-  client_name  = "acme-corp"
+  client_name  = "acme"
   account_id   = "123456789012"
   alert_emails = ["ops@acme.com"]
-
-  # Optional — omit for Community tier
-  license_key = var.makao_license_key
 }
 ```
 
-After `terraform apply`, AWS sends a verification email to each address in `alert_emails`. Recipients must click the link before digests are delivered.
+Terraform Registry publishing is in progress. Use Option 2 in the meantime.
 
-## Module variables
+### Option 2 — GitHub (Available Now)
+
+```hcl
+module "makao_agent" {
+  source = "github.com/makao-labs/terraform-aws-makao-agent"
+
+  client_name  = "acme"
+  account_id   = "123456789012"
+  alert_emails = ["ops@acme.com"]
+}
+```
+
+## Tiers
+
+| | Community (free) | Pro |
+|---|---|---|
+| Cost scan | ✓ | ✓ |
+| Multi-region | ✓ | ✓ |
+| Security groups | ✓ | ✓ |
+| Weekly email digest | ✓ | ✓ |
+| IAM audit (admin users, inactive users) | — | ✓ |
+| Root MFA check | — | ✓ |
+| GuardDuty per-region | — | ✓ |
+| 30-day remediation roadmap | — | ✓ |
+| Architecture risk flags | — | ✓ |
+| Monday briefings | — | ✓ |
+| Spend spike alerts | — | ✓ |
+| Makao Labs support | — | ✓ |
+
+Set `license_key` to activate Pro. Leave it empty for Community.
+
+## Configuration
+
+Required variables first.
 
 | Variable | Default | Description |
 |---|---|---|
-| `client_name` | required | Human-readable client name. Used in email subjects and DynamoDB keys. |
+| `client_name` | required | Name used in email subjects and to namespace resources. |
 | `account_id` | required | AWS account ID being monitored. |
-| `alert_emails` | required | 1–10 email addresses for digest delivery. |
-| `license_key` | `""` | Pro license key. Empty = Community tier. |
-| `aws_region` | `us-east-1` | Primary AWS region for Lambda and DynamoDB. |
-| `scan_regions` | `""` | Comma-separated regions to scan. Defaults to primary region only. |
-| `scan_months` | `6` | Months of history for cost and snapshot age checks. |
-| `escalation_threshold` | `5` | `scan_count` at which a finding is escalated to high severity. |
-| `module_version` | `0.1.0` | Lambda zip version to download from GitHub Releases. |
-| `lambda_memory_mb` | `512` | Lambda memory allocation. |
-| `lambda_timeout_seconds` | `600` | Lambda timeout (max 900). |
-| `lambda_reserved_concurrency` | `-1` | -1 = unreserved. |
-| `log_retention_days` | `7` | CloudWatch log group retention. |
-| `dynamodb_billing_mode` | `PAY_PER_REQUEST` | DynamoDB billing mode. |
-| `dynamodb_point_in_time_recovery` | `false` | Enable DynamoDB PITR. |
-| `schedule_expression` | `cron(0 2 * * ? *)` | EventBridge cron for nightly scan. |
-| `digest_frequency` | `weekly` | `weekly`, `biweekly`, or `monthly`. |
-| `client_timezone` | `Africa/Nairobi` | Used in email timestamps. |
-| `business_hours_start` | `08:00` | Business hours window start. |
-| `business_hours_end` | `18:00` | Business hours window end. |
-| `log_level` | `INFO` | Lambda log level. |
+| `alert_emails` | required | List of 1–10 email addresses to receive the digest. |
+| `license_key` | `""` | Pro license key. Leave empty for Community tier. |
+| `aws_region` | `us-east-1` | Primary region for Lambda and DynamoDB. |
+| `scan_regions` | `""` | Comma-separated list of regions to scan. Defaults to the primary region. |
+| `scan_months` | `6` | Months of history used for cost and snapshot age checks. |
+| `escalation_threshold` | `5` | Number of consecutive scans before a finding is escalated to high severity. |
+| `digest_frequency` | `weekly` | How often the digest email is sent. Options: `weekly`, `biweekly`, `monthly`. |
+| `schedule_expression` | `cron(0 2 * * ? *)` | EventBridge cron expression for the nightly scan. |
+| `lambda_memory_mb` | `512` | Lambda memory in MB. |
+| `lambda_timeout_seconds` | `600` | Lambda timeout in seconds (max 900). |
+| `log_retention_days` | `7` | CloudWatch log retention in days. |
+| `client_timezone` | `Africa/Nairobi` | Timezone used in email timestamps. |
 
-## Repo structure
+## What to expect after install
 
-```
-makao-agent-v3/
-├── lambda/                 # Lambda source (Python 3.12)
-│   ├── main.py             # Handler + StateManager + scan/digest orchestration
-│   ├── tier.py             # License key → Features dataclass
-│   ├── models.py           # Finding dataclass, DynamoDB serialisation
-│   ├── registration.py     # Cold-start registration (non-blocking)
-│   ├── requirements.txt    # Runtime deps (python-dateutil only)
-│   ├── scanner/
-│   │   ├── cost.py         # Cost waste scanners
-│   │   ├── security.py     # SG, IAM, GuardDuty scanners
-│   │   └── compute.py      # Compute Optimizer recommendations
-│   └── email/
-│       ├── digest.py       # Digest orchestration + SES delivery
-│       └── templates/
-│           ├── community.html
-│           └── pro.html
-├── module/                 # Public Terraform module
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── versions.tf
-├── releases/               # Bootstrap infra for makao-labs AWS account
-│   ├── main.tf
-│   ├── variables.tf
-│   └── deploy-releases.sh
-├── scripts/
-│   └── build.sh            # Local build: produces makao-agent.zip
-└── .github/workflows/
-    └── release.yml         # Tag push → GitHub Release on makao-agent-releases
-```
+### SES email verification
 
-## Releasing a new version
+When `terraform apply` runs, AWS SES sends a verification email to every address in `alert_emails`. **Every address must click the verification link before running the digest** — if any sender or recipient address is unverified, SES rejects the entire send.
+
+Check your inbox for:
+
+> **Subject: Amazon Web Services – Email Address Verification Request**
+
+If the verification email lands in spam, mark it as "Not spam" — this trains Gmail to accept future Makao Agent emails.
+
+**Important:** avoid using the same email address as both the SES sender and an alert recipient. The sender is the first address in `alert_emails`. If it also appears as a recipient, Gmail may silently suppress the email (sent-to-self). The recommended fix is to use a dedicated sender address (e.g. `noreply@makao-labs.com`) rather than one of the `alert_emails` addresses.
+
+### Two-loop architecture
+
+The agent has two separate invocation paths:
+
+- **Scan loop** (`"loop":"scan"`) — scans your AWS account, writes findings to DynamoDB. No email is sent.
+- **Digest loop** (`"loop":"digest"`) — reads open findings from DynamoDB, builds the HTML report, sends via SES.
+
+Both must be triggered to receive an email.
+
+### Automatic schedule
+
+Scans run nightly at 2 AM UTC via EventBridge. The digest runs on the frequency set by `digest_frequency` (weekly by default, Monday at 8 AM UTC). Manual invocation below is only needed for your first test.
+
+### Triggering manually
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+# 1. Run the scan
+aws lambda invoke \
+  --function-name makao-agent-<client-name> \
+  --payload '{"detail":{"loop":"scan"}}' \
+  --cli-binary-format raw-in-base64-out /tmp/scan.json && cat /tmp/scan.json
+
+# 2. Then trigger the digest
+aws lambda invoke \
+  --function-name makao-agent-<client-name> \
+  --payload '{"detail":{"loop":"digest"}}' \
+  --cli-binary-format raw-in-base64-out /tmp/digest.json && cat /tmp/digest.json
 ```
 
-The GitHub Actions workflow builds `makao-agent-0.2.0.zip`, creates a release on `makao-labs/makao-agent-releases`, and uploads the zip and SHA-256 checksum as assets.
+### Community vs Pro in the digest
 
-Requires `RELEASES_REPO_TOKEN` secret — a PAT with `repo` scope on `makao-labs/makao-agent-releases`.
+If no `license_key` is set, the digest uses the community tier template: cost findings, security group findings, and an upgrade CTA. IAM audit, GuardDuty, and roadmap sections are not included.
 
-## Local build
+---
 
-```bash
-bash scripts/build.sh                    # → makao-agent.zip
-bash scripts/build.sh --version 0.2.0   # → makao-agent-0.2.0.zip
-```
-
-## Bootstrap (run once)
-
-```bash
-cd releases/
-export AWS_PROFILE=makao-labs
-bash deploy-releases.sh
-```
-
-Provisions the Terraform state S3 bucket and GitHub Actions OIDC role in the makao-labs AWS account.
-
-## Security model
-
-- Findings are sanitised before storage: account IDs in ARNs are replaced with `REDACTED`.
-- No raw account IDs, ARNs, or IP addresses are transmitted externally.
-- The registration call (`api.makao-labs.com/register`) is the only external network call the Lambda makes, and it is non-blocking — a failure never affects the scan.
-- Lambda IAM role is least-privilege: read-only AWS APIs, write to its own DynamoDB table and SES only.
+To unlock Pro, get in touch at [makao-labs.com](https://makao-labs.com).
