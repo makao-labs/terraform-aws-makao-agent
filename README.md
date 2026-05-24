@@ -37,6 +37,87 @@ module "makao_agent" {
 }
 ```
 
+## First-time setup (step by step)
+
+### 1. Create a working directory
+
+```bash
+mkdir makao-agent && cd makao-agent
+```
+
+### 2. Create your Terraform configuration
+
+Create a file named `main.tf` and paste the following:
+
+```hcl
+module "makao_agent" {
+  source = "github.com/makao-labs/terraform-aws-makao-agent"
+
+  client_name  = "your-company-name"
+  account_id   = "123456789012"
+  alert_emails = ["you@yourcompany.com"]
+}
+```
+
+Replace:
+- `your-company-name` — a short slug used to name resources (e.g. `acme`)
+- `123456789012` — your AWS account ID
+  (find it at: AWS Console → top right → your account name → Account ID)
+- `you@yourcompany.com` — email address(es) to receive the digest
+
+### 3. Initialise Terraform
+
+```bash
+terraform init
+```
+
+This downloads the Makao Agent module and the AWS provider.
+You should see "Terraform has been successfully initialized."
+
+### 4. Deploy
+
+```bash
+terraform apply
+```
+
+Terraform will show you a plan of resources to create.
+Type `yes` when prompted to confirm.
+
+Deployment takes 1–2 minutes. When complete you will see:
+"Apply complete! Resources: X added."
+
+### 5. Check your inbox
+
+AWS SES will send a verification email to every address in `alert_emails` immediately after deployment. Check your inbox for:
+
+> **Amazon Web Services – Email Address Verification Request**
+
+Click the verification link in every email before triggering your first scan — SES will not deliver the digest until all addresses are verified.
+
+### 6. Trigger your first scan
+
+Once emails are verified, run the scan manually to get your first report without waiting for the nightly schedule:
+
+```bash
+# Step 1 — Run the scan
+aws lambda invoke \
+  --function-name makao-agent-<your-company-name> \
+  --payload '{"detail":{"loop":"scan"}}' \
+  --cli-binary-format raw-in-base64-out /tmp/scan.json && cat /tmp/scan.json
+
+# Step 2 — Send the digest
+aws lambda invoke \
+  --function-name makao-agent-<your-company-name> \
+  --payload '{"detail":{"loop":"digest"}}' \
+  --cli-binary-format raw-in-base64-out /tmp/digest.json && cat /tmp/digest.json
+```
+
+Replace `<your-company-name>` with the value you set for `client_name`.
+
+Your first report will arrive within a few minutes.
+
+---
+
 ## Tiers
 
 | | Community (free) | Pro |
