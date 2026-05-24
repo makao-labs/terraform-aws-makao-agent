@@ -67,7 +67,7 @@ Required variables first.
 | `alert_emails` | required | List of 1–10 email addresses to receive the digest. |
 | `license_key` | `""` | Pro license key. Leave empty for Community tier. |
 | `aws_region` | `us-east-1` | Primary region for Lambda and DynamoDB. |
-| `scan_regions` | `""` | Comma-separated list of regions to scan. Defaults to the primary region. |
+| `scan_regions` | `""` | Leave empty to auto-discover and scan all active regions. |
 | `scan_months` | `6` | Months of history used for cost and snapshot age checks. |
 | `escalation_threshold` | `5` | Number of consecutive scans before a finding is escalated to high severity. |
 | `digest_frequency` | `weekly` | How often the digest email is sent. Options: `weekly`, `biweekly`, `monthly`. |
@@ -75,7 +75,7 @@ Required variables first.
 | `lambda_memory_mb` | `512` | Lambda memory in MB. |
 | `lambda_timeout_seconds` | `600` | Lambda timeout in seconds (max 900). |
 | `log_retention_days` | `7` | CloudWatch log retention in days. |
-| `client_timezone` | `Africa/Nairobi` | Timezone used in email timestamps. |
+| `client_timezone` | `UTC` | Timezone used in email timestamps. |
 
 ## What to expect after install
 
