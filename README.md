@@ -81,15 +81,16 @@ Required variables first.
 
 ### SES email verification
 
-When `terraform apply` runs, AWS SES sends a verification email to every address in `alert_emails`. **Every address must click the verification link before running the digest** — if any sender or recipient address is unverified, SES rejects the entire send.
+When `terraform apply` runs, AWS SES automatically sends a verification email to every address in `alert_emails` — this happens inside your own AWS account. Each recipient must click the verification link before any scan emails will arrive.
 
-Check your inbox for:
+Look for an email with subject:
 
-> **Subject: Amazon Web Services – Email Address Verification Request**
+> **Amazon Web Services – Email Address Verification Request**
 
-If the verification email lands in spam, mark it as "Not spam" — this trains Gmail to accept future Makao Agent emails.
-
-**Important:** avoid using the same email address as both the SES sender and an alert recipient. The sender is the first address in `alert_emails`. If it also appears as a recipient, Gmail may silently suppress the email (sent-to-self). The recommended fix is to use a dedicated sender address (e.g. `noreply@makao-labs.com`) rather than one of the `alert_emails` addresses.
+A few notes:
+- If the verification email lands in spam, mark it as "Not spam" to train Gmail for future sends.
+- This is a one-time step per email address per deployment.
+- No SES setup is required beforehand — Terraform handles it automatically.
 
 ### Two-loop architecture
 
@@ -100,11 +101,9 @@ The agent has two separate invocation paths:
 
 Both must be triggered to receive an email.
 
-### Automatic schedule
-
-Scans run nightly at 2 AM UTC via EventBridge. The digest runs on the frequency set by `digest_frequency` (weekly by default, Monday at 8 AM UTC). Manual invocation below is only needed for your first test.
-
 ### Triggering manually
+
+Manual invocation is only needed for your first test. After that, the agent runs on its automatic schedule.
 
 ```bash
 # 1. Run the scan
@@ -120,10 +119,14 @@ aws lambda invoke \
   --cli-binary-format raw-in-base64-out /tmp/digest.json && cat /tmp/digest.json
 ```
 
+### Automatic schedule
+
+Scans run nightly at 2 AM UTC via EventBridge. The digest runs on the frequency set by `digest_frequency` (weekly by default, Monday at 8 AM UTC).
+
 ### Community vs Pro in the digest
 
 If no `license_key` is set, the digest uses the community tier template: cost findings, security group findings, and an upgrade CTA. IAM audit, GuardDuty, and roadmap sections are not included.
 
 ---
 
-To unlock Pro, get in touch at [makao-labs.com](https://makao-labs.com).
+Pro tier includes managed email delivery from a verified domain — no SES setup required on your end. To unlock Pro, get in touch at [makao-labs.com](https://makao-labs.com).
