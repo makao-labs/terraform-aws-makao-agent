@@ -127,6 +127,29 @@ Scans run nightly at 2 AM UTC via EventBridge. The digest runs on the frequency 
 
 If no `license_key` is set, the digest uses the community tier template: cost findings, security group findings, and an upgrade CTA. IAM audit, GuardDuty, and roadmap sections are not included.
 
+## Removing the agent
+
+To destroy all infrastructure created by the module, run the following from the directory containing your Terraform configuration:
+
+```bash
+terraform destroy
+```
+
+This removes:
+- The Lambda function and its IAM role
+- The EventBridge schedule
+- The DynamoDB findings table and all scan data
+- The CloudWatch log group
+- The SES email identity verifications
+
+**Note:** `terraform destroy` is irreversible. All findings history stored in DynamoDB will be deleted. If you want to retain scan history before destroying, export the DynamoDB table first:
+
+```bash
+aws dynamodb scan \
+  --table-name makao-agent-<client-name>-findings \
+  --output json > findings-backup.json
+```
+
 ---
 
 Pro tier includes managed email delivery from a verified domain — no SES setup required on your end. To unlock Pro, get in touch at [makao-labs.com](https://makao-labs.com).
