@@ -15,11 +15,12 @@ The agent scans EC2, EBS, RDS, EKS, ECS, Lambda, NAT gateways, EIPs, S3, and Clo
 ```hcl
 module "makao_agent" {
   source  = "makao-labs/makao-agent/aws"
-  version = "0.1.0"
+  version = "0.1.7"
 
-  client_name  = "acme"
-  account_id   = "123456789012"
-  alert_emails = ["ops@acme.com"]
+  client_name    = "acme"
+  account_id     = "123456789012"
+  alert_emails   = ["ops@acme.com"]
+  module_version = "0.1.7"
 }
 ```
 
@@ -31,9 +32,10 @@ Terraform Registry publishing is in progress. Use Option 2 in the meantime.
 module "makao_agent" {
   source = "github.com/makao-labs/terraform-aws-makao-agent"
 
-  client_name  = "acme"
-  account_id   = "123456789012"
-  alert_emails = ["ops@acme.com"]
+  client_name    = "acme"
+  account_id     = "123456789012"
+  alert_emails   = ["ops@acme.com"]
+  module_version = "0.1.7"
 }
 ```
 
@@ -53,9 +55,10 @@ Create a file named `main.tf` and paste the following:
 module "makao_agent" {
   source = "github.com/makao-labs/terraform-aws-makao-agent"
 
-  client_name  = "your-company-name"
-  account_id   = "123456789012"
-  alert_emails = ["you@yourcompany.com"]
+  client_name    = "your-company-name"
+  account_id     = "123456789012"
+  alert_emails   = ["you@yourcompany.com"]
+  module_version = "0.1.7"
 }
 ```
 
